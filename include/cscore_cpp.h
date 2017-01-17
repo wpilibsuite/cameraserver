@@ -65,6 +65,11 @@ struct VideoMode : public CS_VideoMode {
     fps = fps_;
   }
   explicit operator bool() const { return pixelFormat == kUnknown; }
+  bool operator==(const VideoMode& oth) const {
+    return pixelFormat == oth.pixelFormat && width == oth.width &&
+           height == oth.height && fps == oth.fps;
+  }
+  bool operator!=(const VideoMode& oth) const { return !(oth == *this); }
 };
 
 /// Listener event
@@ -155,6 +160,12 @@ void SetStringProperty(CS_Property property, llvm::StringRef value,
 std::vector<std::string> GetEnumPropertyChoices(CS_Property property,
                                                 CS_Status* status);
 
+// Priority-taking versions
+void SetProperty2(CS_Property property, int value, int priority,
+                  CS_Status* status);
+void SetStringProperty2(CS_Property property, llvm::StringRef value,
+                        int priority, CS_Status* status);
+
 //
 // Source Creation Functions
 //
@@ -202,6 +213,15 @@ llvm::ArrayRef<CS_Sink> EnumerateSourceSinks(
     CS_Source source, llvm::SmallVectorImpl<CS_Sink>& vec, CS_Status* status);
 CS_Source CopySource(CS_Source source, CS_Status* status);
 void ReleaseSource(CS_Source source, CS_Status* status);
+
+// Priority-taking versions
+bool SetSourceVideoMode2(CS_Source source, const VideoMode& mode, int priority,
+                         CS_Status* status);
+bool SetSourcePixelFormat2(CS_Source source, VideoMode::PixelFormat pixelFormat,
+                           int priority, CS_Status* status);
+bool SetSourceResolution2(CS_Source source, int width, int height, int priority,
+                          CS_Status* status);
+bool SetSourceFPS2(CS_Source source, int fps, int priority, CS_Status* status);
 
 //
 // Camera Source Common Property Fuctions

@@ -84,3 +84,10 @@ CS_SetCameraWhiteBalanceManual @81
 CS_SetCameraExposureAuto @82
 CS_SetCameraExposureHoldCurrent @83
 CS_SetCameraExposureManual @84
+CS_SetProperty2 @85
+CS_SetStringProperty2 @86
+CS_SetSourceVideoMode2 @87
+CS_SetSourceVideoModeDiscrete2 @88
+CS_SetSourcePixelFormat2 @89
+CS_SetSourceResolution2 @90
+CS_SetSourceFPS2 @91

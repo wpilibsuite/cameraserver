@@ -33,9 +33,10 @@ class HttpCameraImpl : public SourceImpl {
   void Start();
 
   // Property functions
-  void SetProperty(int property, int value, CS_Status* status) override;
+  void SetProperty(int property, int value, int priority,
+                   CS_Status* status) override;
   void SetStringProperty(int property, llvm::StringRef value,
-                         CS_Status* status) override;
+                         int priority, CS_Status* status) override;
 
   // Standard common camera properties
   void SetBrightness(int brightness, CS_Status* status) override;
@@ -47,7 +48,8 @@ class HttpCameraImpl : public SourceImpl {
   void SetExposureHoldCurrent(CS_Status* status) override;
   void SetExposureManual(int value, CS_Status* status) override;
 
-  bool SetVideoMode(const VideoMode& mode, CS_Status* status) override;
+  bool SetVideoMode(const VideoMode& mode, int priority,
+                    CS_Status* status) override;
 
   void NumSinksChanged() override;
   void NumSinksEnabledChanged() override;

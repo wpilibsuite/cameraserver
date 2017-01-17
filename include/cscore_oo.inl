@@ -20,9 +20,9 @@ inline int VideoProperty::Get() const {
   return GetProperty(m_handle, &m_status);
 }
 
-inline void VideoProperty::Set(int value) {
+inline void VideoProperty::Set(int value, int priority) {
   m_status = 0;
-  SetProperty(m_handle, value, &m_status);
+  SetProperty2(m_handle, value, priority, &m_status);
 }
 
 inline int VideoProperty::GetMin() const {
@@ -56,9 +56,9 @@ inline llvm::StringRef VideoProperty::GetString(
   return GetStringProperty(m_handle, buf, &m_status);
 }
 
-inline void VideoProperty::SetString(llvm::StringRef value) {
+inline void VideoProperty::SetString(llvm::StringRef value, int priority) {
   m_status = 0;
-  SetStringProperty(m_handle, value, &m_status);
+  SetStringProperty2(m_handle, value, priority, &m_status);
 }
 
 inline std::vector<std::string> VideoProperty::GetChoices() const {

@@ -54,7 +54,7 @@ class VideoProperty {
   bool IsEnum() const { return m_kind == kEnum; }
 
   int Get() const;
-  void Set(int value);
+  void Set(int value, int priority = 0);
   int GetMin() const;
   int GetMax() const;
   int GetStep() const;
@@ -63,7 +63,7 @@ class VideoProperty {
   // String-specific functions
   std::string GetString() const;
   llvm::StringRef GetString(llvm::SmallVectorImpl<char>& buf) const;
-  void SetString(llvm::StringRef value);
+  void SetString(llvm::StringRef value, int priority = 0);
 
   // Enum-specific functions
   std::vector<std::string> GetChoices() const;

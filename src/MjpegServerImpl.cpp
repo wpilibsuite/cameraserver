@@ -265,14 +265,14 @@ bool MjpegServerImpl::ConnThread::ProcessCommand(llvm::raw_ostream& os,
         } else {
           response << param << ": " << val << "\r\n";
           SDEBUG4("HTTP parameter \"" << param << "\" value " << value);
-          source.SetProperty(prop, val, &status);
+          source.SetProperty(prop, val, 0, &status);
         }
         break;
       }
       case CS_PROP_STRING: {
         response << param << ": \"ok\"\r\n";
         SDEBUG4("HTTP parameter \"" << param << "\" value \"" << value << "\"");
-        source.SetStringProperty(prop, value, &status);
+        source.SetStringProperty(prop, value, 0, &status);
         break;
       }
       default:

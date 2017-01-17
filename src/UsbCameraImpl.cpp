@@ -400,8 +400,14 @@ void UsbCameraImpl::CameraThreadMain() {
           continue;
         }
 
-        PutFrame(static_cast<VideoMode::PixelFormat>(m_mode.pixelFormat),
-                 m_mode.width, m_mode.height,
+        VideoMode mode;
+        {
+          std::unique_lock<std::mutex> lock(m_mutex);
+          mode = GetVideoMode(lock);
+        }
+
+        PutFrame(static_cast<VideoMode::PixelFormat>(mode.pixelFormat),
+                 mode.width, mode.height,
                  llvm::StringRef(
                      static_cast<const char*>(m_buffers[buf.index].m_data),
                      static_cast<std::size_t>(buf.bytesused)),
@@ -591,6 +597,8 @@ bool UsbCameraImpl::DeviceStreamOff() {
 
 CS_StatusValue UsbCameraImpl::DeviceCmdSetMode(
     std::unique_lock<std::mutex>& lock, const Message& msg) {
+  int priority = msg.data[4];
+  VideoMode oldMode = GetVideoMode(lock);
   VideoMode newMode;
   if (msg.kind == Message::kCmdSetMode) {
     newMode.pixelFormat = msg.data[0];
@@ -601,25 +609,27 @@ CS_StatusValue UsbCameraImpl::DeviceCmdSetMode(
     m_modeSetResolution = true;
     m_modeSetFPS = true;
   } else if (msg.kind == Message::kCmdSetPixelFormat) {
-    newMode = m_mode;
+    newMode = oldMode;
     newMode.pixelFormat = msg.data[0];
     m_modeSetPixelFormat = true;
   } else if (msg.kind == Message::kCmdSetResolution) {
-    newMode = m_mode;
+    newMode = oldMode;
     newMode.width = msg.data[0];
     newMode.height = msg.data[1];
     m_modeSetResolution = true;
   } else if (msg.kind == Message::kCmdSetFPS) {
-    newMode = m_mode;
+    newMode = oldMode;
     newMode.fps = msg.data[0];
     m_modeSetFPS = true;
   }
 
+  // Update m_mode but don't notify until we've actually changed the device.
+  if (!UpdateVideoMode(newMode, priority, false)) return CS_OK;
+
   // If the pixel format or resolution changed, we need to disconnect and
   // reconnect
-  if (newMode.pixelFormat != m_mode.pixelFormat ||
-      newMode.width != m_mode.width || newMode.height != m_mode.height) {
-    m_mode = newMode;
+  if (newMode.pixelFormat != oldMode.pixelFormat ||
+      newMode.width != oldMode.width || newMode.height != oldMode.height) {
     lock.unlock();
     bool wasStreaming = m_streaming;
     if (wasStreaming) DeviceStreamOff();
@@ -630,8 +640,7 @@ CS_StatusValue UsbCameraImpl::DeviceCmdSetMode(
     if (wasStreaming) DeviceStreamOn();
     Notifier::GetInstance().NotifySourceVideoMode(*this, newMode);
     lock.lock();
-  } else if (newMode.fps != m_mode.fps) {
-    m_mode = newMode;
+  } else if (newMode.fps != oldMode.fps) {
     lock.unlock();
     // Need to stop streaming to set FPS
     bool wasStreaming = m_streaming;
@@ -642,6 +651,7 @@ CS_StatusValue UsbCameraImpl::DeviceCmdSetMode(
     lock.lock();
   }
 
+
   return CS_OK;
 }
 
@@ -650,6 +660,7 @@ CS_StatusValue UsbCameraImpl::DeviceCmdSetProperty(
   bool setString = (msg.kind == Message::kCmdSetPropertyStr);
   int property = msg.data[0];
   int value = msg.data[1];
+  int priority = msg.data[2];
   llvm::StringRef valueStr = msg.dataStr;
 
   // Look up
@@ -689,10 +700,10 @@ CS_StatusValue UsbCameraImpl::DeviceCmdSetProperty(
     return CS_PROPERTY_WRITE_FAILED;
 
   // Cache the set values
-  UpdatePropertyValue(property, setString, value, valueStr);
+  UpdatePropertyValue(property, setString, value, valueStr, priority);
   if (percentageProperty != 0)
     UpdatePropertyValue(percentageProperty, setString, percentageValue,
-                        valueStr);
+                        valueStr, priority);
 
   return CS_OK;
 }
@@ -735,6 +746,12 @@ void UsbCameraImpl::DeviceSetMode() {
   int fd = m_fd.load();
   if (fd < 0) return;
 
+  VideoMode mode;
+  {
+    std::unique_lock<std::mutex> lock(m_mutex);
+    mode = GetVideoMode(lock);
+  }
+
   struct v4l2_format vfmt;
   std::memset(&vfmt, 0, sizeof(vfmt));
 #ifdef V4L2_CAP_EXT_PIX_FORMAT
@@ -744,27 +761,33 @@ void UsbCameraImpl::DeviceSetMode() {
 #endif
   vfmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   vfmt.fmt.pix.pixelformat =
-      FromPixelFormat(static_cast<VideoMode::PixelFormat>(m_mode.pixelFormat));
+      FromPixelFormat(static_cast<VideoMode::PixelFormat>(mode.pixelFormat));
   if (vfmt.fmt.pix.pixelformat == 0) {
-    SWARNING("could not set format " << m_mode.pixelFormat
+    SWARNING("could not set format " << mode.pixelFormat
                                      << ", defaulting to MJPEG");
     vfmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
   }
-  vfmt.fmt.pix.width = m_mode.width;
-  vfmt.fmt.pix.height = m_mode.height;
+  vfmt.fmt.pix.width = mode.width;
+  vfmt.fmt.pix.height = mode.height;
   vfmt.fmt.pix.field = V4L2_FIELD_ANY;
   if (DoIoctl(fd, VIDIOC_S_FMT, &vfmt) != 0) {
-    SWARNING("could not set format " << m_mode.pixelFormat << " res "
-                                     << m_mode.width << "x" << m_mode.height);
+    SWARNING("could not set format " << mode.pixelFormat << " res "
+                                     << mode.width << "x" << mode.height);
   } else {
-    SINFO("set format " << m_mode.pixelFormat << " res " << m_mode.width << "x"
-                        << m_mode.height);
+    SINFO("set format " << mode.pixelFormat << " res " << mode.width << "x"
+                        << mode.height);
   }
 }
 
 void UsbCameraImpl::DeviceSetFPS() {
   int fd = m_fd.load();
   if (fd < 0) return;
+
+  VideoMode mode;
+  {
+    std::unique_lock<std::mutex> lock(m_mutex);
+    mode = GetVideoMode(lock);
+  }
 
   struct v4l2_streamparm parm;
   std::memset(&parm, 0, sizeof(parm));
@@ -773,16 +796,22 @@ void UsbCameraImpl::DeviceSetFPS() {
   if ((parm.parm.capture.capability & V4L2_CAP_TIMEPERFRAME) == 0) return;
   std::memset(&parm, 0, sizeof(parm));
   parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  parm.parm.capture.timeperframe = FPSToFract(m_mode.fps);
+  parm.parm.capture.timeperframe = FPSToFract(mode.fps);
   if (DoIoctl(fd, VIDIOC_S_PARM, &parm) != 0)
-    SWARNING("could not set FPS to " << m_mode.fps);
+    SWARNING("could not set FPS to " << mode.fps);
   else
-    SINFO("set FPS to " << m_mode.fps);
+    SINFO("set FPS to " << mode.fps);
 }
 
 void UsbCameraImpl::DeviceCacheMode() {
   int fd = m_fd.load();
   if (fd < 0) return;
+
+  VideoMode oldMode;
+  {
+    std::unique_lock<std::mutex> lock(m_mutex);
+    oldMode = GetVideoMode(lock);
+  }
 
   // Get format
   struct v4l2_format vfmt;
@@ -796,21 +825,20 @@ void UsbCameraImpl::DeviceCacheMode() {
   if (DoIoctl(fd, VIDIOC_G_FMT, &vfmt) != 0) {
     SERROR("could not read current video mode");
     std::lock_guard<std::mutex> lock(m_mutex);
-    m_mode = VideoMode{VideoMode::kMJPEG, 320, 240, 30};
+    UpdateVideoMode(VideoMode{VideoMode::kMJPEG, 320, 240, 30},
+                    std::numeric_limits<int>::min());
     return;
   }
-  VideoMode::PixelFormat pixelFormat = ToPixelFormat(vfmt.fmt.pix.pixelformat);
-  int width = vfmt.fmt.pix.width;
-  int height = vfmt.fmt.pix.height;
+  VideoMode newMode(ToPixelFormat(vfmt.fmt.pix.pixelformat), vfmt.fmt.pix.width,
+                    vfmt.fmt.pix.height, 0);
 
   // Get FPS
-  int fps = 0;
   struct v4l2_streamparm parm;
   std::memset(&parm, 0, sizeof(parm));
   parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   if (TryIoctl(fd, VIDIOC_G_PARM, &parm) == 0) {
     if (parm.parm.capture.capability & V4L2_CAP_TIMEPERFRAME)
-      fps = FractToFPS(parm.parm.capture.timeperframe);
+      newMode.fps = FractToFPS(parm.parm.capture.timeperframe);
   }
 
   // Update format with user changes.
@@ -818,60 +846,58 @@ void UsbCameraImpl::DeviceCacheMode() {
 
   if (m_modeSetPixelFormat) {
     // User set pixel format
-    if (pixelFormat != m_mode.pixelFormat) {
+    if (newMode.pixelFormat != oldMode.pixelFormat) {
       formatChanged = true;
-      pixelFormat = static_cast<VideoMode::PixelFormat>(m_mode.pixelFormat);
+      newMode.pixelFormat =
+          static_cast<VideoMode::PixelFormat>(oldMode.pixelFormat);
     }
   } else {
     // Default to MJPEG
-    if (pixelFormat != VideoMode::kMJPEG) {
+    if (newMode.pixelFormat != VideoMode::kMJPEG) {
       formatChanged = true;
-      pixelFormat = VideoMode::kMJPEG;
+      newMode.pixelFormat = VideoMode::kMJPEG;
     }
   }
 
   if (m_modeSetResolution) {
     // User set resolution
-    if (width != m_mode.width || height != m_mode.height) {
+    if (newMode.width != oldMode.width || newMode.height != oldMode.height) {
       formatChanged = true;
-      width = m_mode.width;
-      height = m_mode.height;
+      newMode.width = oldMode.width;
+      newMode.height = oldMode.height;
     }
   } else {
     // Default to lowest known resolution (based on number of total pixels)
-    int numPixels = width * height;
+    int numPixels = newMode.width * newMode.height;
     for (const auto& mode : m_videoModes) {
-      if (mode.pixelFormat != pixelFormat) continue;
+      if (mode.pixelFormat != newMode.pixelFormat) continue;
       int numPixelsHere = mode.width * mode.height;
       if (numPixelsHere < numPixels) {
         formatChanged = true;
         numPixels = numPixelsHere;
-        width = mode.width;
-        height = mode.height;
+        newMode.width = mode.width;
+        newMode.height = mode.height;
       }
     }
   }
 
   // Update FPS with user changes
   bool fpsChanged = false;
-  if (m_modeSetFPS && fps != m_mode.fps) {
+  if (m_modeSetFPS && newMode.fps != oldMode.fps) {
     fpsChanged = true;
-    fps = m_mode.fps;
+    newMode.fps = oldMode.fps;
   }
 
-  // Save to global mode
+  // Save to global mode but don't notify until after device actually sets
   {
     std::lock_guard<std::mutex> lock(m_mutex);
-    m_mode.pixelFormat = pixelFormat;
-    m_mode.width = width;
-    m_mode.height = height;
-    m_mode.fps = fps;
+    if (!UpdateVideoMode(newMode, GetVideoModePriority(), false)) return;
   }
 
   if (formatChanged) DeviceSetMode();
   if (fpsChanged) DeviceSetFPS();
 
-  Notifier::GetInstance().NotifySourceVideoMode(*this, m_mode);
+  Notifier::GetInstance().NotifySourceVideoMode(*this, newMode);
 }
 
 void UsbCameraImpl::DeviceCacheProperty(
@@ -1128,17 +1154,20 @@ void UsbCameraImpl::SetQuirks() {
   m_hd3000 = GetDescription(desc).endswith("LifeCam HD-3000");
 }
 
-void UsbCameraImpl::SetProperty(int property, int value, CS_Status* status) {
+void UsbCameraImpl::SetProperty(int property, int value, int priority,
+                                CS_Status* status) {
   Message msg{Message::kCmdSetProperty};
   msg.data[0] = property;
   msg.data[1] = value;
+  msg.data[2] = priority;
   *status = SendAndWait(std::move(msg));
 }
 
 void UsbCameraImpl::SetStringProperty(int property, llvm::StringRef value,
-                                      CS_Status* status) {
+                                      int priority, CS_Status* status) {
   Message msg{Message::kCmdSetPropertyStr};
   msg.data[0] = property;
+  msg.data[2] = priority;
   msg.dataStr = value;
   *status = SendAndWait(std::move(msg));
 }
@@ -1149,7 +1178,7 @@ void UsbCameraImpl::SetBrightness(int brightness, CS_Status* status) {
   } else if (brightness < 0) {
     brightness = 0;
   }
-  SetProperty(GetPropertyIndex(kPropBrValue), brightness, status);
+  SetProperty(GetPropertyIndex(kPropBrValue), brightness, 0, status);
 }
 
 int UsbCameraImpl::GetBrightness(CS_Status* status) const {
@@ -1157,66 +1186,72 @@ int UsbCameraImpl::GetBrightness(CS_Status* status) const {
 }
 
 void UsbCameraImpl::SetWhiteBalanceAuto(CS_Status* status) {
-  SetProperty(GetPropertyIndex(kPropWbAuto), 1, status);  // auto
+  SetProperty(GetPropertyIndex(kPropWbAuto), 1, 0, status);  // auto
 }
 
 void UsbCameraImpl::SetWhiteBalanceHoldCurrent(CS_Status* status) {
-  SetProperty(GetPropertyIndex(kPropWbAuto), 0, status);  // manual
+  SetProperty(GetPropertyIndex(kPropWbAuto), 0, 0, status);  // manual
 }
 
 void UsbCameraImpl::SetWhiteBalanceManual(int value, CS_Status* status) {
-  SetProperty(GetPropertyIndex(kPropWbAuto), 0, status);  // manual
-  SetProperty(GetPropertyIndex(kPropWbValue), value, status);
+  SetProperty(GetPropertyIndex(kPropWbAuto), 0, 0, status);  // manual
+  SetProperty(GetPropertyIndex(kPropWbValue), value, 0, status);
 }
 
 void UsbCameraImpl::SetExposureAuto(CS_Status* status) {
   // auto; yes, this is opposite of WB
-  SetProperty(GetPropertyIndex(kPropExAuto), 0, status);
+  SetProperty(GetPropertyIndex(kPropExAuto), 0, 0, status);
 }
 
 void UsbCameraImpl::SetExposureHoldCurrent(CS_Status* status) {
-  SetProperty(GetPropertyIndex(kPropExAuto), 1, status);  // manual
+  SetProperty(GetPropertyIndex(kPropExAuto), 1, 0, status);  // manual
 }
 
 void UsbCameraImpl::SetExposureManual(int value, CS_Status* status) {
-  SetProperty(GetPropertyIndex(kPropExAuto), 1, status);  // manual
+  SetProperty(GetPropertyIndex(kPropExAuto), 1, 0, status);  // manual
   if (value > 100) {
     value = 100;
   } else if (value < 0) {
     value = 0;
   }
-  SetProperty(GetPropertyIndex(kPropExValue), value, status);
+  SetProperty(GetPropertyIndex(kPropExValue), value, 0, status);
 }
 
-bool UsbCameraImpl::SetVideoMode(const VideoMode& mode, CS_Status* status) {
+bool UsbCameraImpl::SetVideoMode(const VideoMode& mode, int priority,
+                                 CS_Status* status) {
   Message msg{Message::kCmdSetMode};
   msg.data[0] = mode.pixelFormat;
   msg.data[1] = mode.width;
   msg.data[2] = mode.height;
   msg.data[3] = mode.fps;
+  msg.data[4] = priority;
   *status = SendAndWait(std::move(msg));
   return *status == CS_OK;
 }
 
 bool UsbCameraImpl::SetPixelFormat(VideoMode::PixelFormat pixelFormat,
-                                   CS_Status* status) {
+                                   int priority, CS_Status* status) {
   Message msg{Message::kCmdSetPixelFormat};
   msg.data[0] = pixelFormat;
+  msg.data[4] = priority;
   *status = SendAndWait(std::move(msg));
   return *status == CS_OK;
 }
 
-bool UsbCameraImpl::SetResolution(int width, int height, CS_Status* status) {
+bool UsbCameraImpl::SetResolution(int width, int height, int priority,
+                                  CS_Status* status) {
   Message msg{Message::kCmdSetResolution};
   msg.data[0] = width;
   msg.data[1] = height;
+  msg.data[4] = priority;
   *status = SendAndWait(std::move(msg));
   return *status == CS_OK;
 }
 
-bool UsbCameraImpl::SetFPS(int fps, CS_Status* status) {
+bool UsbCameraImpl::SetFPS(int fps, int priority, CS_Status* status) {
   Message msg{Message::kCmdSetFPS};
   msg.data[0] = fps;
+  msg.data[4] = priority;
   *status = SendAndWait(std::move(msg));
   return *status == CS_OK;
 }

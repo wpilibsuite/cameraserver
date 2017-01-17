@@ -84,7 +84,7 @@ void SetProperty(CS_Property property, int value, CS_Status* status) {
   int propertyIndex;
   auto source = GetPropertySource(property, &propertyIndex, status);
   if (!source) return;
-  source->SetProperty(propertyIndex, value, status);
+  source->SetProperty(propertyIndex, value, 0, status);
 }
 
 int GetPropertyMin(CS_Property property, CS_Status* status) {
@@ -137,7 +137,7 @@ void SetStringProperty(CS_Property property, llvm::StringRef value,
   int propertyIndex;
   auto source = GetPropertySource(property, &propertyIndex, status);
   if (!source) return;
-  source->SetStringProperty(propertyIndex, value, status);
+  source->SetStringProperty(propertyIndex, value, 0, status);
 }
 
 std::vector<std::string> GetEnumPropertyChoices(CS_Property property,
@@ -146,6 +146,22 @@ std::vector<std::string> GetEnumPropertyChoices(CS_Property property,
   auto source = GetPropertySource(property, &propertyIndex, status);
   if (!source) return std::vector<std::string>{};
   return source->GetEnumPropertyChoices(propertyIndex, status);
+}
+
+void SetProperty2(CS_Property property, int value, int priority,
+                  CS_Status* status) {
+  int propertyIndex;
+  auto source = GetPropertySource(property, &propertyIndex, status);
+  if (!source) return;
+  source->SetProperty(propertyIndex, value, priority, status);
+}
+
+void SetStringProperty2(CS_Property property, llvm::StringRef value,
+                        int priority, CS_Status* status) {
+  int propertyIndex;
+  auto source = GetPropertySource(property, &propertyIndex, status);
+  if (!source) return;
+  source->SetStringProperty(propertyIndex, value, priority, status);
 }
 
 //
@@ -266,7 +282,7 @@ bool SetSourceVideoMode(CS_Source source, const VideoMode& mode,
     *status = CS_INVALID_HANDLE;
     return false;
   }
-  return data->source->SetVideoMode(mode, status);
+  return data->source->SetVideoMode(mode, 0, status);
 }
 
 bool SetSourcePixelFormat(CS_Source source, VideoMode::PixelFormat pixelFormat,
@@ -276,7 +292,7 @@ bool SetSourcePixelFormat(CS_Source source, VideoMode::PixelFormat pixelFormat,
     *status = CS_INVALID_HANDLE;
     return false;
   }
-  return data->source->SetPixelFormat(pixelFormat, status);
+  return data->source->SetPixelFormat(pixelFormat, 0, status);
 }
 
 bool SetSourceResolution(CS_Source source, int width, int height,
@@ -286,7 +302,7 @@ bool SetSourceResolution(CS_Source source, int width, int height,
     *status = CS_INVALID_HANDLE;
     return false;
   }
-  return data->source->SetResolution(width, height, status);
+  return data->source->SetResolution(width, height, 0, status);
 }
 
 bool SetSourceFPS(CS_Source source, int fps, CS_Status* status) {
@@ -295,7 +311,7 @@ bool SetSourceFPS(CS_Source source, int fps, CS_Status* status) {
     *status = CS_INVALID_HANDLE;
     return false;
   }
-  return data->source->SetFPS(fps, status);
+  return data->source->SetFPS(fps, 0, status);
 }
 
 std::vector<VideoMode> EnumerateSourceVideoModes(CS_Source source,
@@ -346,6 +362,45 @@ void ReleaseSource(CS_Source source, CS_Status* status) {
                                          CS_SOURCE_DESTROYED);
     inst.Free(source);
   }
+}
+
+bool SetSourceVideoMode2(CS_Source source, const VideoMode& mode, int priority,
+                         CS_Status* status) {
+  auto data = Sources::GetInstance().Get(source);
+  if (!data) {
+    *status = CS_INVALID_HANDLE;
+    return false;
+  }
+  return data->source->SetVideoMode(mode, priority, status);
+}
+
+bool SetSourcePixelFormat2(CS_Source source, VideoMode::PixelFormat pixelFormat,
+                           int priority, CS_Status* status) {
+  auto data = Sources::GetInstance().Get(source);
+  if (!data) {
+    *status = CS_INVALID_HANDLE;
+    return false;
+  }
+  return data->source->SetPixelFormat(pixelFormat, priority, status);
+}
+
+bool SetSourceResolution2(CS_Source source, int width, int height, int priority,
+                          CS_Status* status) {
+  auto data = Sources::GetInstance().Get(source);
+  if (!data) {
+    *status = CS_INVALID_HANDLE;
+    return false;
+  }
+  return data->source->SetResolution(width, height, priority, status);
+}
+
+bool SetSourceFPS2(CS_Source source, int fps, int priority, CS_Status* status) {
+  auto data = Sources::GetInstance().Get(source);
+  if (!data) {
+    *status = CS_INVALID_HANDLE;
+    return false;
+  }
+  return data->source->SetFPS(fps, priority, status);
 }
 
 //

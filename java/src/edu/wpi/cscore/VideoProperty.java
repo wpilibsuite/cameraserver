@@ -68,6 +68,10 @@ public class VideoProperty {
     CameraServerJNI.setProperty(m_handle, value);
   }
 
+  public void set(int value, int priority) {
+    CameraServerJNI.setProperty2(m_handle, value, priority);
+  }
+
   public int getMin() {
     return CameraServerJNI.getPropertyMin(m_handle);
   }
@@ -91,6 +95,10 @@ public class VideoProperty {
 
   public void setString(String value) {
     CameraServerJNI.setStringProperty(m_handle, value);
+  }
+
+  public void setString(String value, int priority) {
+    CameraServerJNI.setStringProperty2(m_handle, value, priority);
   }
 
   // Enum-specific functions

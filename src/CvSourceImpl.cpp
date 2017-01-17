@@ -22,9 +22,8 @@
 using namespace cs;
 
 CvSourceImpl::CvSourceImpl(llvm::StringRef name, const VideoMode& mode)
-    : SourceImpl{name} {
-  m_mode = mode;
-  m_videoModes.push_back(m_mode);
+    : SourceImpl{name, mode} {
+  m_videoModes.push_back(mode);
 }
 
 CvSourceImpl::~CvSourceImpl() {}
@@ -42,7 +41,8 @@ bool CvSourceImpl::CacheProperties(CS_Status* status) const {
   return true;
 }
 
-void CvSourceImpl::SetProperty(int property, int value, CS_Status* status) {
+void CvSourceImpl::SetProperty(int property, int value, int priority,
+                               CS_Status* status) {
   std::lock_guard<std::mutex> lock(m_mutex);
   auto prop = static_cast<PropertyData*>(GetProperty(property));
   if (!prop) {
@@ -59,11 +59,11 @@ void CvSourceImpl::SetProperty(int property, int value, CS_Status* status) {
     return;
   }
 
-  UpdatePropertyValue(property, false, value, llvm::StringRef{});
+  UpdatePropertyValue(property, false, value, llvm::StringRef{}, priority);
 }
 
 void CvSourceImpl::SetStringProperty(int property, llvm::StringRef value,
-                                     CS_Status* status) {
+                                     int priority, CS_Status* status) {
   std::lock_guard<std::mutex> lock(m_mutex);
   auto prop = static_cast<PropertyData*>(GetProperty(property));
   if (!prop) {
@@ -79,7 +79,7 @@ void CvSourceImpl::SetStringProperty(int property, llvm::StringRef value,
     return;
   }
 
-  UpdatePropertyValue(property, true, 0, value);
+  UpdatePropertyValue(property, true, 0, value, priority);
 }
 
 // These are only valid for cameras (should never get called)
@@ -117,7 +117,8 @@ void CvSourceImpl::SetExposureManual(int value, CS_Status* status) {
   *status = CS_INVALID_HANDLE;
 }
 
-bool CvSourceImpl::SetVideoMode(const VideoMode& mode, CS_Status* status) {
+bool CvSourceImpl::SetVideoMode(const VideoMode& mode, int priority,
+                                CS_Status* status) {
   // can't set video mode on OpenCV source
   return false;
 }
