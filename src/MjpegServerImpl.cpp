@@ -38,26 +38,26 @@ static const char* emptyRootPage =
     "</body></html>";
 
 // An HTML page to be sent when a source exists
-static const char* startRootPage = "<html><head>"
-    "<script>"
-    "function httpGetAsync(name, val)"
-    "{"
-    "    var host = location.protocol + '//' + location.host + '/?action=command&' + name + '=' + val;"
-    "    var xmlHttp = new XMLHttpRequest();"
-    "    xmlHttp.open(\"GET\", host, true);"
-    "    xmlHttp.send(null);"
-    "}"
-    "function updateInt(prop, name, val) {"
-    "    document.querySelector(prop).value = val;"
-    "    httpGetAsync(name, val);"
-    "}"
-    "function update(name, val) {"
-    "    httpGetAsync(name, val);"
-    "}"
-    "</script>"
-    "<title>CameraServer</title><body>"
-    "<img src=\"/stream.mjpg\" /><p />"
-    "<a href=\"/settings.json\">Settings JSON</a>";
+static const char* startRootPage = "<html><head>\n"
+    "<script>\n"
+    "function httpGetAsync(name, val)\n"
+    "{\n"
+    "    var host = location.protocol + '//' + location.host + '/?action=command&' + name + '=' + val;\n"
+    "    var xmlHttp = new XMLHttpRequest();\n"
+    "    xmlHttp.open(\"GET\", host, true);\n"
+    "    xmlHttp.send(null);\n"
+    "}\n"
+    "function updateInt(prop, name, val) {\n"
+    "    document.querySelector(prop).value = val;\n"
+    "    httpGetAsync(name, val);\n"
+    "}\n"
+    "function update(name, val) {\n"
+    "    httpGetAsync(name, val);\n"
+    "}\n"
+    "</script>\n"
+    "<title>CameraServer</title><body>\n"
+    "<img src=\"/stream.mjpg\" /><p />\n"
+    "<a href=\"/settings.json\">Settings JSON</a>\n";
 static const char* endRootPage ="</body></html>";
 
 class MjpegServerImpl::ConnThread : public wpi::SafeThread {
@@ -326,24 +326,29 @@ void MjpegServerImpl::ConnThread::SendHTML(llvm::raw_ostream& os,
     auto name = source.GetPropertyName(prop, name_buf, &status);
     if (name.startswith("raw_")) continue;
     auto kind = source.GetPropertyKind(prop);
-    auto min = source.GetPropertyMin(prop, &status);
-    auto max = source.GetPropertyMax(prop, &status);
-    auto step = source.GetPropertyStep(prop, &status);
-    os << "<p>" << "<label for=\"" << name << "\">" << name << "</label>";
+    os << "<p />"
+       << "<label for=\"" << name << "\">" << name << "</label>\n";
     switch (kind) {
       case CS_PROP_BOOLEAN:
-          os << "<input type=\"checkbox\" onclick=\"update('" << name << "', this.checked ? 1 : 0)\" ";
+        os << "<input id=\"" << name
+           << "\" type=\"checkbox\" onclick=\"update('" << name
+           << "', this.checked ? 1 : 0)\" ";
         if (source.GetProperty(prop, &status) != 0)
-          os << "checked>";
-        else 
-          os << ">";
+          os << "checked />\n";
+        else
+          os << " />\n";
         break;
       case CS_PROP_INTEGER: {
         auto valI = source.GetProperty(prop, &status);
-        os << "<input type=\"range\" min=\"" << min << "\" max=\"" << max << "\" value=\"" << valI;
-        os << "\" id=\"" << name << "\" step=\"" << step << "\" oninput=\"updateInt('#" << name;
-        os << "op', '" << name << "', value)\">";
-        os << "<output for=\"" << name << "\" id=\"" << name << "op\">" << valI << "</output>";
+        auto min = source.GetPropertyMin(prop, &status);
+        auto max = source.GetPropertyMax(prop, &status);
+        auto step = source.GetPropertyStep(prop, &status);
+        os << "<input type=\"range\" min=\"" << min << "\" max=\"" << max
+           << "\" value=\"" << valI << "\" id=\"" << name << "\" step=\""
+           << step << "\" oninput=\"updateInt('#" << name << "op', '" << name
+           << "', value)\" />\n";
+        os << "<output for=\"" << name << "\" id=\"" << name << "op\">" << valI
+           << "</output>\n";
         break;
       }
       case CS_PROP_ENUM: {
@@ -351,25 +356,29 @@ void MjpegServerImpl::ConnThread::SendHTML(llvm::raw_ostream& os,
         auto choices = source.GetEnumPropertyChoices(prop, &status);
         int j = 0;
         for (auto choice = choices.begin(), end = choices.end(); choice != end;
-            ++j, ++choice) {
+             ++j, ++choice) {
+          if (choice->empty()) continue;  // skip empty choices
           // replace any non-printable characters in name with spaces
           llvm::SmallString<128> ch_name;
           for (char ch : *choice) ch_name.push_back(isprint(ch) ? ch : ' ');
-          os << "<input type=\"radio\" name=\"" << name << "\" value=\"" << ch_name << "\" onclick=\"update('";
-          os << name << "', " << j << ")\"";
+          os << "<input id=\"" << name << j << "\" type=\"radio\" name=\""
+             << name << "\" value=\"" << ch_name << "\" onclick=\"update('"
+             << name << "', " << j << ")\"";
           if (j == valE) {
-            os << "checked";
+            os << " checked";
           }
-          os << "> " << ch_name << "  ";
+          os << " /><label for=\"" << name << j << "\">" << ch_name
+             << "</label>\n";
         }
         break;
       }
       case CS_PROP_STRING: {
         llvm::SmallString<128> strval_buf;
-        os << "<input type=\"text\" id=\"" << name << "box\" name=\"" << name << "\" value=\"";
-        os << source.GetStringProperty(prop, strval_buf, &status) << "\">";
-        os << "<input type=\"button\" value =\"Submit\" onclick=\"update('" << name << "', ";
-        os << name << "box.value)\">";
+        os << "<input type=\"text\" id=\"" << name << "box\" name=\"" << name
+           << "\" value=\""
+           << source.GetStringProperty(prop, strval_buf, &status) << "\" />\n";
+        os << "<input type=\"button\" value =\"Submit\" onclick=\"update('"
+           << name << "', " << name << "box.value)\" />\n";
         break;
       }
       default:
