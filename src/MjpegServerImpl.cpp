@@ -32,7 +32,7 @@ using namespace cs;
 
 // A bare-bones HTML webpage for user friendliness.
 static const char* emptyRootPage =
-    "<html><head><title>CameraServer</title><body>"
+    "<html><head><title>CameraServer</title></head><body>"
     "<img src=\"/stream.mjpg\" /><p />"
     "<a href=\"/settings.json\">Settings JSON</a>"
     "</body></html>";
@@ -55,7 +55,7 @@ static const char* startRootPage = "<html><head>\n"
     "    httpGetAsync(name, val);\n"
     "}\n"
     "</script>\n"
-    "<title>CameraServer</title><body>\n"
+    "<title>CameraServer</title></head><body>\n"
     "<img src=\"/stream.mjpg\" /><p />\n"
     "<a href=\"/settings.json\">Settings JSON</a>\n";
 static const char* endRootPage ="</body></html>";
