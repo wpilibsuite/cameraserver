@@ -376,6 +376,9 @@ char* CS_GetHostname();
 char** CS_GetNetworkInterfaces(int* count);
 void CS_FreeNetworkInterfaces(char** interfaces, int count);
 
+// don't call this
+void CS_Destroy();
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

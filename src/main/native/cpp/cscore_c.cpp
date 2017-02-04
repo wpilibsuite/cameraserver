@@ -16,6 +16,11 @@
 #include "c_util.h"
 #include "cscore_cpp.h"
 
+#include "NetworkListener.h"
+#include "Notifier.h"
+
+#include "Log.h"
+
 extern "C" {
 
 CS_PropertyKind CS_GetPropertyKind(CS_Property property, CS_Status* status) {
@@ -373,6 +378,20 @@ void CS_FreeNetworkInterfaces(char** interfaces, int count) {
   if (!interfaces) return;
   for (int i = 0; i < count; ++i) std::free(interfaces[i]);
   std::free(interfaces);
+}
+
+// destroy all cscore internal state
+void CS_Destroy() {
+  try {
+    cs::Notifier::GetInstance().Stop();
+  } catch(const std::exception& e) {
+    ERROR("Notifier shutdown failed: " << e.what());
+  }
+  try {
+    cs::NetworkListener::GetInstance().Stop();
+  } catch(const std::exception& e) {
+    ERROR("NetworkListener shutdown failed: " << e.what());
+  }
 }
 
 }  // extern "C"
