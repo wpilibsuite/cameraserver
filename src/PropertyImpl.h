@@ -8,6 +8,7 @@
 #ifndef CS_PROPERTYIMPL_H_
 #define CS_PROPERTYIMPL_H_
 
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -69,6 +70,7 @@ class PropertyImpl {
   std::string valueStr;
   std::vector<std::string> enumChoices;
   bool valueSet{false};
+  int setPriority{std::numeric_limits<int>::min()};
 };
 
 }  // namespace cs

@@ -75,6 +75,16 @@ char** CS_GetEnumPropertyChoices(CS_Property property, int* count,
   return out;
 }
 
+void CS_SetProperty2(CS_Property property, int value, int priority,
+                     CS_Status* status) {
+  return cs::SetProperty2(property, value, priority, status);
+}
+
+void CS_SetStringProperty2(CS_Property property, const char* value,
+                           int priority, CS_Status* status) {
+  return cs::SetStringProperty2(property, value, priority, status);
+}
+
 CS_SourceKind CS_GetSourceKind(CS_Source source, CS_Status* status) {
   return cs::GetSourceKind(source, status);
 }
@@ -123,7 +133,7 @@ void CS_GetSourceVideoMode(CS_Source source, CS_VideoMode* mode,
 }
 
 CS_Bool CS_SetSourceVideoMode(CS_Source source, const CS_VideoMode* mode,
-                           CS_Status* status) {
+                              CS_Status* status) {
   return cs::SetSourceVideoMode(
       source, static_cast<const cs::VideoMode&>(*mode), status);
 }
@@ -184,6 +194,42 @@ CS_Source CS_CopySource(CS_Source source, CS_Status* status) {
 
 void CS_ReleaseSource(CS_Source source, CS_Status* status) {
   return cs::ReleaseSource(source, status);
+}
+
+CS_Bool CS_SetSourceVideoMode2(CS_Source source, const CS_VideoMode* mode,
+                               int priority, CS_Status* status) {
+  return cs::SetSourceVideoMode2(
+      source, static_cast<const cs::VideoMode&>(*mode), priority, status);
+}
+
+CS_Bool CS_SetSourceVideoModeDiscrete2(CS_Source source,
+                                       enum CS_PixelFormat pixelFormat,
+                                       int width, int height, int fps,
+                                       int priority, CS_Status* status) {
+  return cs::SetSourceVideoMode2(
+      source, cs::VideoMode{static_cast<cs::VideoMode::PixelFormat>(
+                                static_cast<int>(pixelFormat)),
+                            width, height, fps},
+      priority, status);
+}
+
+CS_Bool CS_SetSourcePixelFormat2(CS_Source source,
+                                 enum CS_PixelFormat pixelFormat,
+                                 int priority, CS_Status* status) {
+  return cs::SetSourcePixelFormat2(
+      source,
+      static_cast<cs::VideoMode::PixelFormat>(static_cast<int>(pixelFormat)),
+      priority, status);
+}
+
+CS_Bool CS_SetSourceResolution2(CS_Source source, int width, int height,
+                                int priority, CS_Status* status) {
+  return cs::SetSourceResolution2(source, width, height, priority, status);
+}
+
+CS_Bool CS_SetSourceFPS2(CS_Source source, int fps, int priority,
+                         CS_Status* status) {
+  return cs::SetSourceFPS2(source, fps, priority, status);
 }
 
 void CS_SetCameraBrightness(CS_Source source, int brightness,

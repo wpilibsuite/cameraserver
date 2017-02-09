@@ -99,6 +99,10 @@ public class CameraServerJNI {
   public static native void setStringProperty(int property, String value);
   public static native String[] getEnumPropertyChoices(int property);
 
+  // Priority-taking versions
+  public static native void setProperty2(int property, int value, int priority);
+  public static native void setStringProperty2(int property, String value, int priority);
+
   //
   // Source Creation Functions
   //
@@ -127,6 +131,12 @@ public class CameraServerJNI {
   public static native int[] enumerateSourceSinks(int source);
   public static native int copySource(int source);
   public static native void releaseSource(int source);
+
+  // Priority-taking versions
+  public static native boolean setSourceVideoMode2(int source, int pixelFormat, int width, int height, int fps, int priority);
+  public static native boolean setSourcePixelFormat2(int source, int pixelFormat, int priority);
+  public static native boolean setSourceResolution2(int source, int width, int height, int priority);
+  public static native boolean setSourceFPS2(int source, int fps, int priority);
 
   //
   // Camera Source Common Property Fuctions

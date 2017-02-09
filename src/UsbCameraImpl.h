@@ -35,8 +35,9 @@ class UsbCameraImpl : public SourceImpl {
   void Start();
 
   // Property functions
-  void SetProperty(int property, int value, CS_Status* status) override;
-  void SetStringProperty(int property, llvm::StringRef value,
+  void SetProperty(int property, int value, int priority,
+                   CS_Status* status) override;
+  void SetStringProperty(int property, llvm::StringRef value, int priority,
                          CS_Status* status) override;
 
   // Standard common camera properties
@@ -49,11 +50,13 @@ class UsbCameraImpl : public SourceImpl {
   void SetExposureHoldCurrent(CS_Status* status) override;
   void SetExposureManual(int value, CS_Status* status) override;
 
-  bool SetVideoMode(const VideoMode& mode, CS_Status* status) override;
-  bool SetPixelFormat(VideoMode::PixelFormat pixelFormat,
+  bool SetVideoMode(const VideoMode& mode, int priority,
+                    CS_Status* status) override;
+  bool SetPixelFormat(VideoMode::PixelFormat pixelFormat, int priority,
                       CS_Status* status) override;
-  bool SetResolution(int width, int height, CS_Status* status) override;
-  bool SetFPS(int fps, CS_Status* status) override;
+  bool SetResolution(int width, int height, int priority,
+                     CS_Status* status) override;
+  bool SetFPS(int fps, int priority, CS_Status* status) override;
 
   void NumSinksChanged() override;
   void NumSinksEnabledChanged() override;
@@ -80,7 +83,7 @@ class UsbCameraImpl : public SourceImpl {
     Message(Kind kind_) : kind(kind_), from(std::this_thread::get_id()) {}
 
     Kind kind;
-    int data[4];
+    int data[5];
     std::string dataStr;
     std::thread::id from;
   };

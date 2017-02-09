@@ -24,8 +24,9 @@ class CvSourceImpl : public SourceImpl {
   void Start();
 
   // Property functions
-  void SetProperty(int property, int value, CS_Status* status) override;
-  void SetStringProperty(int property, llvm::StringRef value,
+  void SetProperty(int property, int value, int priority,
+                   CS_Status* status) override;
+  void SetStringProperty(int property, llvm::StringRef value, int priority,
                          CS_Status* status) override;
 
   // Standard common camera properties
@@ -38,7 +39,8 @@ class CvSourceImpl : public SourceImpl {
   void SetExposureHoldCurrent(CS_Status* status) override;
   void SetExposureManual(int value, CS_Status* status) override;
 
-  bool SetVideoMode(const VideoMode& mode, CS_Status* status) override;
+  bool SetVideoMode(const VideoMode& mode, int priority,
+                    CS_Status* status) override;
 
   void NumSinksChanged() override;
   void NumSinksEnabledChanged() override;

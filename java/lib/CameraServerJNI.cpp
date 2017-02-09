@@ -380,6 +380,36 @@ JNIEXPORT jobjectArray JNICALL Java_edu_wpi_cscore_CameraServerJNI_getEnumProper
 
 /*
  * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    setProperty2
+ * Signature: (III)V
+ */
+JNIEXPORT void JNICALL Java_edu_wpi_cscore_CameraServerJNI_setProperty2
+  (JNIEnv *env, jclass, jint property, jint value, jint priority)
+{
+  CS_Status status = 0;
+  cs::SetProperty2(property, value, priority, &status);
+  CheckStatus(env, status);
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    setStringProperty2
+ * Signature: (ILjava/lang/String;I)V
+ */
+JNIEXPORT void JNICALL Java_edu_wpi_cscore_CameraServerJNI_setStringProperty2
+  (JNIEnv *env, jclass, jint property, jstring value, jint priority)
+{
+  if (!value) {
+    nullPointerEx.Throw(env, "value cannot be null");
+    return;
+  }
+  CS_Status status = 0;
+  cs::SetStringProperty2(property, JStringRef{env, value}, priority, &status);
+  CheckStatus(env, status);
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
  * Method:    createUsbCameraDev
  * Signature: (Ljava/lang/String;I)I
  */
@@ -755,6 +785,69 @@ JNIEXPORT void JNICALL Java_edu_wpi_cscore_CameraServerJNI_releaseSource
   CS_Status status = 0;
   cs::ReleaseSource(source, &status);
   CheckStatus(env, status);
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    setSourceVideoMode2
+ * Signature: (IIIIII)Z
+ */
+JNIEXPORT jboolean JNICALL Java_edu_wpi_cscore_CameraServerJNI_setSourceVideoMode2
+  (JNIEnv *env, jclass, jint source, jint pixelFormat, jint width, jint height,
+   jint fps, jint priority)
+{
+  CS_Status status = 0;
+  auto val = cs::SetSourceVideoMode2(
+      source,
+      cs::VideoMode(static_cast<cs::VideoMode::PixelFormat>(pixelFormat), width,
+                    height, fps),
+      priority, &status);
+  CheckStatus(env, status);
+  return val;
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    setSourcePixelFormat2
+ * Signature: (III)Z
+ */
+JNIEXPORT jboolean JNICALL Java_edu_wpi_cscore_CameraServerJNI_setSourcePixelFormat2
+  (JNIEnv *env, jclass, jint source, jint pixelFormat, jint priority)
+{
+  CS_Status status = 0;
+  auto val = cs::SetSourcePixelFormat2(
+      source, static_cast<cs::VideoMode::PixelFormat>(pixelFormat), priority,
+      &status);
+  CheckStatus(env, status);
+  return val;
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    setSourceResolution2
+ * Signature: (IIII)Z
+ */
+JNIEXPORT jboolean JNICALL Java_edu_wpi_cscore_CameraServerJNI_setSourceResolution2
+  (JNIEnv *env, jclass, jint source, jint width, jint height, jint priority)
+{
+  CS_Status status = 0;
+  auto val = cs::SetSourceResolution2(source, width, height, priority, &status);
+  CheckStatus(env, status);
+  return val;
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    setSourceFPS2
+ * Signature: (III)Z
+ */
+JNIEXPORT jboolean JNICALL Java_edu_wpi_cscore_CameraServerJNI_setSourceFPS2
+  (JNIEnv *env, jclass, jint source, jint fps, jint priority)
+{
+  CS_Status status = 0;
+  auto val = cs::SetSourceFPS2(source, fps, priority, &status);
+  CheckStatus(env, status);
+  return val;
 }
 
 /*

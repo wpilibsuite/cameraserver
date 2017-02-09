@@ -11,6 +11,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -31,7 +32,7 @@ class SourceImpl {
   friend class Frame;
 
  public:
-  SourceImpl(llvm::StringRef name);
+  SourceImpl(llvm::StringRef name, const VideoMode& mode = VideoMode{});
   virtual ~SourceImpl();
   SourceImpl(const SourceImpl& oth) = delete;
   SourceImpl& operator=(const SourceImpl& oth) = delete;
@@ -94,7 +95,8 @@ class SourceImpl {
                                   llvm::SmallVectorImpl<char>& buf,
                                   CS_Status* status) const;
   int GetProperty(int property, CS_Status* status) const;
-  virtual void SetProperty(int property, int value, CS_Status* status) = 0;
+  virtual void SetProperty(int property, int value, int priority,
+                           CS_Status* status) = 0;
   int GetPropertyMin(int property, CS_Status* status) const;
   int GetPropertyMax(int property, CS_Status* status) const;
   int GetPropertyStep(int property, CS_Status* status) const;
@@ -103,7 +105,7 @@ class SourceImpl {
                                     llvm::SmallVectorImpl<char>& buf,
                                     CS_Status* status) const;
   virtual void SetStringProperty(int property, llvm::StringRef value,
-                                 CS_Status* status) = 0;
+                                 int priority, CS_Status* status) = 0;
   std::vector<std::string> GetEnumPropertyChoices(int property,
                                                   CS_Status* status) const;
 
@@ -119,14 +121,16 @@ class SourceImpl {
 
   // Video mode functions
   VideoMode GetVideoMode(CS_Status* status) const;
-  virtual bool SetVideoMode(const VideoMode& mode, CS_Status* status) = 0;
+  virtual bool SetVideoMode(const VideoMode& mode, int priority,
+                            CS_Status* status) = 0;
 
   // These have default implementations but can be overridden for custom
   // or optimized behavior.
-  virtual bool SetPixelFormat(VideoMode::PixelFormat pixelFormat,
+  virtual bool SetPixelFormat(VideoMode::PixelFormat pixelFormat, int priority,
                               CS_Status* status);
-  virtual bool SetResolution(int width, int height, CS_Status* status);
-  virtual bool SetFPS(int fps, CS_Status* status);
+  virtual bool SetResolution(int width, int height, int priority,
+                             CS_Status* status);
+  virtual bool SetFPS(int fps, int priority, CS_Status* status);
 
   std::vector<VideoMode> EnumerateVideoModes(CS_Status* status) const;
 
@@ -173,14 +177,25 @@ class SourceImpl {
 
   // Update property value; must be called with m_mutex held.
   void UpdatePropertyValue(int property, bool setString, int value,
-                           llvm::StringRef valueStr);
+                           llvm::StringRef valueStr, int priority);
+
+  // Get video mode with m_mutex held.
+  const VideoMode& GetVideoMode(std::unique_lock<std::mutex>&) const {
+    return m_mode;
+  }
+
+  // Get video mode priority with m_mutex held.
+  int GetVideoModePriority() const { return m_modeSetPriority; }
+
+  // Update mode; must be called with m_mutex held.  Returns true if mode
+  // actually changed (after checking priority and for actual difference).
+  bool UpdateVideoMode(const VideoMode& mode, int priority,
+                       bool notify = true) const;
 
   // Cached properties and video modes (protected with m_mutex)
   mutable std::vector<std::unique_ptr<PropertyImpl>> m_propertyData;
   mutable llvm::StringMap<int> m_properties;
   mutable std::vector<VideoMode> m_videoModes;
-  // Current video mode
-  mutable VideoMode m_mode;
   // Whether CacheProperties() has been successful at least once (and thus
   // should not be called again)
   mutable std::atomic_bool m_properties_cached{false};
@@ -194,6 +209,10 @@ class SourceImpl {
 
   std::string m_name;
   std::string m_description;
+
+  // Current video mode
+  mutable VideoMode m_mode;
+  mutable int m_modeSetPriority{std::numeric_limits<int>::min()};
 
   std::mutex m_frameMutex;
   std::condition_variable m_frameCv;

@@ -19,7 +19,8 @@ using namespace cs;
 
 static constexpr std::size_t kMaxImagesAvail = 32;
 
-SourceImpl::SourceImpl(llvm::StringRef name) : m_name{name} {
+SourceImpl::SourceImpl(llvm::StringRef name, const VideoMode& mode)
+    : m_name{name}, m_mode{mode} {
   m_frame = Frame{*this, llvm::StringRef{}, 0};
 }
 
@@ -234,26 +235,27 @@ VideoMode SourceImpl::GetVideoMode(CS_Status* status) const {
 }
 
 bool SourceImpl::SetPixelFormat(VideoMode::PixelFormat pixelFormat,
-                                CS_Status* status) {
+                                int priority, CS_Status* status) {
   auto mode = GetVideoMode(status);
   if (!mode) return false;
   mode.pixelFormat = pixelFormat;
-  return SetVideoMode(mode, status);
+  return SetVideoMode(mode, priority, status);
 }
 
-bool SourceImpl::SetResolution(int width, int height, CS_Status* status) {
+bool SourceImpl::SetResolution(int width, int height, int priority,
+                               CS_Status* status) {
   auto mode = GetVideoMode(status);
   if (!mode) return false;
   mode.width = width;
   mode.height = height;
-  return SetVideoMode(mode, status);
+  return SetVideoMode(mode, priority, status);
 }
 
-bool SourceImpl::SetFPS(int fps, CS_Status* status) {
+bool SourceImpl::SetFPS(int fps, int priority, CS_Status* status) {
   auto mode = GetVideoMode(status);
   if (!mode) return false;
   mode.fps = fps;
-  return SetVideoMode(mode, status);
+  return SetVideoMode(mode, priority, status);
 }
 
 std::vector<VideoMode> SourceImpl::EnumerateVideoModes(
@@ -348,9 +350,12 @@ void SourceImpl::NotifyPropertyCreated(int propIndex, PropertyImpl& prop) {
 }
 
 void SourceImpl::UpdatePropertyValue(int property, bool setString, int value,
-                                     llvm::StringRef valueStr) {
+                                     llvm::StringRef valueStr, int priority) {
   auto prop = GetProperty(property);
   if (!prop) return;
+
+  if (prop->setPriority > priority) return;
+  prop->setPriority = priority;
 
   if (setString)
     prop->SetValue(valueStr);
@@ -362,6 +367,16 @@ void SourceImpl::UpdatePropertyValue(int property, bool setString, int value,
     Notifier::GetInstance().NotifySourceProperty(
         *this, CS_SOURCE_PROPERTY_VALUE_UPDATED, prop->name, property,
         prop->propKind, prop->value, prop->valueStr);
+}
+
+bool SourceImpl::UpdateVideoMode(const VideoMode& mode, int priority,
+                                 bool notify) const {
+  if (priority < m_modeSetPriority) return false;
+  m_modeSetPriority = priority;
+  if (m_mode == mode) return false;
+  m_mode = mode;
+  if (notify) Notifier::GetInstance().NotifySourceVideoMode(*this, mode);
+  return true;
 }
 
 void SourceImpl::ReleaseImage(std::unique_ptr<Image> image) {

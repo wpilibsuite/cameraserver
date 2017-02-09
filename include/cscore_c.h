@@ -195,6 +195,12 @@ void CS_SetStringProperty(CS_Property property, const char* value,
 char** CS_GetEnumPropertyChoices(CS_Property property, int* count,
                                  CS_Status* status);
 
+// Priority-taking versions
+void CS_SetProperty2(CS_Property property, int value, int priority,
+                     CS_Status* status);
+void CS_SetStringProperty2(CS_Property property, const char* value,
+                           int priority, CS_Status* status);
+
 //
 // Source Creation Functions
 //
@@ -241,6 +247,21 @@ CS_Sink* CS_EnumerateSourceSinks(CS_Source source, int* count,
                                  CS_Status* status);
 CS_Source CS_CopySource(CS_Source source, CS_Status* status);
 void CS_ReleaseSource(CS_Source source, CS_Status* status);
+
+// Priority-taking versions
+CS_Bool CS_SetSourceVideoMode2(CS_Source source, const CS_VideoMode* mode,
+                               int priority, CS_Status* status);
+CS_Bool CS_SetSourceVideoModeDiscrete2(CS_Source source,
+                                       enum CS_PixelFormat pixelFormat,
+                                       int width, int height, int fps,
+                                       int priority, CS_Status* status);
+CS_Bool CS_SetSourcePixelFormat2(CS_Source source,
+                                 enum CS_PixelFormat pixelFormat, int priority,
+                                 CS_Status* status);
+CS_Bool CS_SetSourceResolution2(CS_Source source, int width, int height,
+                                int priority, CS_Status* status);
+CS_Bool CS_SetSourceFPS2(CS_Source source, int fps, int priority,
+                         CS_Status* status);
 
 //
 // Camera Source Common Property Fuctions

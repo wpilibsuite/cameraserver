@@ -378,12 +378,13 @@ bool HttpCameraImpl::CacheProperties(CS_Status* status) const {
   return true;
 }
 
-void HttpCameraImpl::SetProperty(int property, int value, CS_Status* status) {
+void HttpCameraImpl::SetProperty(int property, int value, int priority,
+                                 CS_Status* status) {
   // TODO
 }
 
 void HttpCameraImpl::SetStringProperty(int property, llvm::StringRef value,
-                                       CS_Status* status) {
+                                       int priority, CS_Status* status) {
   // TODO
 }
 
@@ -420,10 +421,11 @@ void HttpCameraImpl::SetExposureManual(int value, CS_Status* status) {
   // TODO
 }
 
-bool HttpCameraImpl::SetVideoMode(const VideoMode& mode, CS_Status* status) {
+bool HttpCameraImpl::SetVideoMode(const VideoMode& mode, int priority,
+                                  CS_Status* status) {
   if (mode.pixelFormat != VideoMode::kMJPEG) return false;
   std::lock_guard<std::mutex> lock(m_mutex);
-  m_mode = mode;
+  if (!UpdateVideoMode(mode, priority)) return true;
   m_streamSettingsUpdated = true;
   return true;
 }
