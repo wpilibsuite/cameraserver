@@ -77,6 +77,7 @@ class MjpegServerImpl::ConnThread : public wpi::SafeThread {
   void SendJSON(llvm::raw_ostream& os, SourceImpl& source, bool header);
   void SendHTML(llvm::raw_ostream& os, SourceImpl& source, bool header);
   void SendStream(wpi::raw_socket_ostream& os);
+  void SendFrame(wpi::raw_socket_ostream& os, SourceImpl& source);
   void ProcessRequest();
 
   std::unique_ptr<wpi::NetworkStream> m_stream;
@@ -640,6 +641,62 @@ void MjpegServerImpl::ConnThread::SendStream(wpi::raw_socket_ostream& os) {
   StopStream();
 }
 
+void MjpegServerImpl::ConnThread::SendFrame(wpi::raw_socket_ostream& os,
+                                            SourceImpl& source) {
+  int sourceCount = source.GetNumSinksEnabled();
+  StartStream();
+  
+  bool sent = false;
+  
+  if (m_active && sourceCount == 0) {
+    // HACK: If there isn't already a stream active, then need to wait
+    //       until the settings have been applied? Camera output on
+    //       first frame is strange...
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  }
+  
+  if (m_active) {  
+    SDEBUG4("waiting for frame");
+    Frame frame = source.GetNextFrame(1.0);  // blocks
+    
+    if (m_active && (bool)frame) {
+      int width = frame.GetOriginalWidth();
+      int height = frame.GetOriginalHeight();
+      Image* image =
+          frame.GetImage(width, height, VideoMode::kMJPEG, m_compression);
+      if (image && image->pixelFormat == VideoMode::kMJPEG) {
+        const char* data = image->data();
+        std::size_t size = image->size();
+        std::size_t locSOF = size;
+        bool addDHT = JpegNeedsDHT(data, &size, &locSOF);
+        
+        sent = true;
+        SendHeader(os, 200, "OK", "image/jpeg",
+                   "Content-Length: " + std::to_string(size));
+        
+        if (addDHT) {
+          // Insert DHT data immediately before SOF
+          os << llvm::StringRef(data, locSOF);
+          os << JpegGetDHT();
+          os << llvm::StringRef(data + locSOF, image->size() - locSOF);
+        } else {
+          os << llvm::StringRef(data, size);
+        }
+        os.flush();
+      }
+    }
+  }
+  
+  StopStream();
+  
+  if (!sent) {
+    // TODO: send a blank jpeg instead?
+    SendHeader(os, 503, "Service Unavailable", "text/plain");
+    os << "No image available\r\n";
+    os.flush();
+  }
+}
+
 void MjpegServerImpl::ConnThread::ProcessRequest() {
   wpi::raw_socket_istream is{*m_stream};
   wpi::raw_socket_ostream os{*m_stream, true};
@@ -659,7 +716,7 @@ void MjpegServerImpl::ConnThread::ProcessRequest() {
     return;
   }
 
-  enum { kCommand, kStream, kGetSettings, kRootPage } kind;
+  enum { kCommand, kStream, kGetSettings, kRootPage, kSnapshot } kind;
   llvm::StringRef parameters;
   size_t pos;
 
@@ -689,6 +746,9 @@ void MjpegServerImpl::ConnThread::ProcessRequest() {
              llvm::StringRef::npos) {
     kind = kCommand;
     parameters = req.substr(req.find('&', pos + 20)).substr(1);
+  } else if ((pos = req.find("GET /?action=snapshot")) != llvm::StringRef::npos) {
+    kind = kSnapshot;
+    parameters = req.substr(req.find('&', pos + 19)).substr(1);
   } else if (req.find("GET / ") != llvm::StringRef::npos || req == "GET /\n") {
     kind = kRootPage;
   } else {
@@ -744,6 +804,14 @@ void MjpegServerImpl::ConnThread::ProcessRequest() {
         SendHTML(os, *source, false);
       } else {
         os << emptyRootPage << "\r\n";
+      }
+    case kSnapshot:
+      if (auto source = GetSource()) {
+        SDEBUG("request for stream " << source->GetName());
+        if (!ProcessCommand(os, *source, parameters, false)) return;
+        SendFrame(os, *source);
+      } else {
+        SendError(os, 404, "Resource not found");
       }
       break;
   }
