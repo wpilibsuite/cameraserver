@@ -7,7 +7,9 @@ def cscoreSetupModel = { project ->
                 if (project.isArm) {
                     targetPlatform 'arm'
                 } else {
-                    //targetPlatform 'x86'
+                    if (!project.hasProperty("skipx86")) {
+                        targetPlatform 'x86'
+                    }
                     targetPlatform 'x64'
                 }
                 setupDefines(project, binaries)
@@ -57,7 +59,9 @@ def cscoreSetupExamplesModel = { project ->
                     if (project.isArm) {
                         targetPlatform 'arm'
                     } else {
-                        //targetPlatform 'x86'
+                        if (!project.hasProperty("skipx86")) {
+                            targetPlatform 'x86'
+                        }
                         targetPlatform 'x64'
                     }
                     setupDefines(project, binaries)
@@ -80,7 +84,9 @@ def cscoreSetupExamplesModel = { project ->
                     if (project.isArm) {
                         targetPlatform 'arm'
                     } else {
-                        //targetPlatform 'x86'
+                        if (!project.hasProperty("skipx86")) {
+                            targetPlatform 'x86'
+                        }
                         targetPlatform 'x64'
                     }
                     setupDefines(project, binaries)
@@ -103,7 +109,9 @@ def cscoreSetupExamplesModel = { project ->
                     if (project.isArm) {
                         targetPlatform 'arm'
                     } else {
-                        //targetPlatform 'x86'
+                        if (!project.hasProperty("skipx86")) {
+                            targetPlatform 'x86'
+                        }
                         targetPlatform 'x64'
                     }
                     setupDefines(project, binaries)
@@ -126,7 +134,9 @@ def cscoreSetupExamplesModel = { project ->
                     if (project.isArm) {
                         targetPlatform 'arm'
                     } else {
-                        //targetPlatform 'x86'
+                        if (!project.hasProperty("skipx86")) {
+                            targetPlatform 'x86'
+                        }
                         targetPlatform 'x64'
                     }
                     setupDefines(project, binaries)
@@ -150,7 +160,9 @@ def cscoreSetupExamplesModel = { project ->
                 if (project.isArm) {
                     targetPlatform 'arm'
                 } else {
-                    //targetPlatform 'x86'
+                    if (!project.hasProperty("skipx86")) {
+                            targetPlatform 'x86'
+                        }
                     targetPlatform 'x64'
                 }
                 setupDefines(project, binaries)
