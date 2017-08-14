@@ -1,9 +1,6 @@
-#include "ntcore.h"
-#include "nt_Value.h"
 #include <iostream>
+#include "cscore.h"
 
 int main() {
-    nt::SetEntryValue("MyValue", nt::Value::MakeString("Hello World"));
-
-    std::cout << nt::GetEntryValue("MyValue")->GetString() << std::endl;
+    std::cout << cs::GetHostname() << std::endl;
 }

@@ -1,12 +1,12 @@
-package edu.wpi.first.ntcore;
+package edu.wpi.cscore;
 
-import edu.wpi.first.wpilibj.networktables.NetworkTablesJNI;
+import edu.wpi.cscore.CameraServerJNI;
 import edu.wpi.first.wpiutil.RuntimeDetector;
 
 public class DevMain {
     public static void main(String[] args) {
         System.out.println("Hello World!");
         System.out.println(RuntimeDetector.getPlatformPath());
-        NetworkTablesJNI.flush();
+        System.out.println(CameraServerJNI.getHostname());
     }
 }
