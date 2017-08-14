@@ -18,7 +18,6 @@ import org.opencv.core.Core;
 
 public class CameraServerJNI {
   static boolean libraryLoaded = false;
-  static boolean cvLibraryLoaded = false;
   static File jniLibrary = null;
   static {
     if (!libraryLoaded) {
@@ -26,20 +25,8 @@ public class CameraServerJNI {
         System.loadLibrary("cscore");
       } catch (UnsatisfiedLinkError e) {
         try {
-          String osname = System.getProperty("os.name");
-          String resname;
-          if (osname.startsWith("Windows"))
-            resname = "/Windows/" + System.getProperty("os.arch") + "/";
-          else
-            resname = "/" + osname + "/" + System.getProperty("os.arch") + "/";
-          System.out.println("platform: " + resname);
-          if (osname.startsWith("Windows"))
-            resname += "cscore.dll";
-          else if (osname.startsWith("Mac"))
-            resname += "libcscore.dylib";
-          else
-            resname += "libcscore.so";
-          InputStream is = CameraServerJNI.class.getResourceAsStream(resname);
+          String resname = RuntimeDetector.getLibraryResource("cscore");
+          InputStream is = NetworkTablesJNI.class.getResourceAsStream(resname);
           if (is != null) {
             // create temporary file
             if (System.getProperty("os.name").startsWith("Windows"))
@@ -72,15 +59,6 @@ public class CameraServerJNI {
         }
       }
       libraryLoaded = true;
-      if (!cvLibraryLoaded) {
-        try {
-          System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-        } catch (UnsatisfiedLinkError ex) {
-          ex.printStackTrace();
-          System.exit(1);
-        }
-        cvLibraryLoaded = true;
-      }
     }
   }
 
