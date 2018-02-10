@@ -67,7 +67,6 @@ public class CameraServerJNI {
     String opencvName = Core.NATIVE_LIBRARY_NAME;
     if (!cvLibraryLoaded) {
       try {
-
         System.loadLibrary(opencvName);
       } catch (UnsatisfiedLinkError e) {
         try {
