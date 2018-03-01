@@ -1375,6 +1375,59 @@ JNIEXPORT void JNICALL Java_edu_wpi_cscore_CameraServerJNI_removeListener
 
 /*
  * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    setTelemetryPeriod
+ * Signature: (D)V
+ */
+JNIEXPORT void JNICALL Java_edu_wpi_cscore_CameraServerJNI_setTelemetryPeriod
+  (JNIEnv* env, jclass, jdouble seconds)
+{
+  cs::SetTelemetryPeriod(seconds);
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    getTelemetryElapsedTime
+ * Signature: ()D
+ */
+JNIEXPORT jdouble JNICALL Java_edu_wpi_cscore_CameraServerJNI_getTelemetryElapsedTime
+  (JNIEnv* env, jclass)
+{
+  return cs::GetTelemetryElapsedTime();
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    getTelemetryValue
+ * Signature: (II)J
+ */
+JNIEXPORT jlong JNICALL Java_edu_wpi_cscore_CameraServerJNI_getTelemetryValue
+  (JNIEnv* env, jclass, jint handle, jint kind)
+{
+  CS_Status status = 0;
+  auto val = cs::GetTelemetryValue(handle, static_cast<CS_TelemetryKind>(kind),
+                                   &status);
+  CheckStatus(env, status);
+  return val;
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    getTelemetryAverageValue
+ * Signature: (II)D
+ */
+JNIEXPORT jdouble JNICALL Java_edu_wpi_cscore_CameraServerJNI_getTelemetryAverageValue
+  (JNIEnv* env, jclass, jint handle, jint kind)
+{
+  CS_Status status = 0;
+  auto val = cs::GetTelemetryAverageValue(handle,
+                                          static_cast<CS_TelemetryKind>(kind),
+                                          &status);
+  CheckStatus(env, status);
+  return val;
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
  * Method:    enumerateUsbCameras
  * Signature: ()[Ledu/wpi/cameraserver/UsbCameraInfo;
  */

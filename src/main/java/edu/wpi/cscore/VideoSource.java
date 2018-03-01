@@ -181,6 +181,24 @@ public class VideoSource {
   }
 
   /**
+   * Get the actual FPS.
+   * CameraServerJNI#setTelemetryPeriod() must be called for this to be valid.
+   * @return Actual FPS averaged over the telemetry period.
+   */
+  public double getActualFPS() {
+    return CameraServerJNI.getTelemetryAverageValue(m_handle, CameraServerJNI.TelemetryKind.kSourceFramesReceived);
+  }
+
+  /**
+   * Get the data rate (in bytes per second).
+   * CameraServerJNI#setTelemetryPeriod() must be called for this to be valid.
+   * @return Data rate averaged over the telemetry period.
+   */
+  public double getActualDataRate() {
+    return CameraServerJNI.getTelemetryAverageValue(m_handle, CameraServerJNI.TelemetryKind.kSourceBytesReceived);
+  }
+
+  /**
    * Enumerate all known video modes for this source.
    */
   public VideoMode[] enumerateVideoModes() {
