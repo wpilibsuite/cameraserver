@@ -101,7 +101,7 @@ int64_t Telemetry::GetValue(CS_Handle handle, CS_TelemetryKind kind,
                             CS_Status* status) {
   auto thr = m_owner.GetThread();
   if (!thr) {
-    *status = CS_EMPTY_VALUE;
+    *status = CS_TELEMETRY_NOT_ENABLED;
     return 0;
   }
   return thr->GetValue(handle, kind, status);
@@ -111,7 +111,7 @@ double Telemetry::GetAverageValue(CS_Handle handle, CS_TelemetryKind kind,
                                   CS_Status* status) {
   auto thr = m_owner.GetThread();
   if (!thr) {
-    *status = CS_EMPTY_VALUE;
+    *status = CS_TELEMETRY_NOT_ENABLED;
     return 0;
   }
   if (thr->m_elapsed == 0) return 0.0;

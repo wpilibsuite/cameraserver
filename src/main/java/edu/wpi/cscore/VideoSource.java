@@ -182,7 +182,8 @@ public class VideoSource {
 
   /**
    * Get the actual FPS.
-   * CameraServerJNI#setTelemetryPeriod() must be called for this to be valid.
+   * CameraServerJNI#setTelemetryPeriod() must be called for this to be valid
+   * (throws VisionException if telemetry is not enabled).
    * @return Actual FPS averaged over the telemetry period.
    */
   public double getActualFPS() {
@@ -191,7 +192,8 @@ public class VideoSource {
 
   /**
    * Get the data rate (in bytes per second).
-   * CameraServerJNI#setTelemetryPeriod() must be called for this to be valid.
+   * CameraServerJNI#setTelemetryPeriod() must be called for this to be valid
+   * (throws VisionException if telemetry is not enabled).
    * @return Data rate averaged over the telemetry period.
    */
   public double getActualDataRate() {

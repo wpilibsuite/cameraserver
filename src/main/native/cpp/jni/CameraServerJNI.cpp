@@ -161,6 +161,9 @@ static void ReportError(JNIEnv* env, CS_Status status) {
     case CS_BAD_URL:
       msg = "bad URL";
       break;
+    case CS_TELEMETRY_NOT_ENABLED:
+      msg = "telemetry not enabled";
+      break;
     default: {
       llvm::raw_svector_ostream oss{msg};
       oss << "unknown error code=" << status;
